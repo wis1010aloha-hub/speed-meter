@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#101d30" />
+  <title>EMA SPEED | WITMOTION試作 v0.2</title>
+  <style>
+    :root { color-scheme:dark; font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif; background:#101d30; color:#eef4ff; }
+    * {box-sizing:border-box}
+    body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at 50% -12%,#244665 0,#101d30 60%);padding:24px 18px 44px}
+    main{max-width:560px;margin:0 auto}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    h1{margin:0;font-size:23px;letter-spacing:.09em} h2{font-size:15px;margin:0 0 12px}
+    .dim{font-size:12px;color:#abbfd5;line-height:1.6}.lead{color:#a9c2de;font-size:13px;margin:6px 0 20px}
+    .status{font-size:12px;color:#8ecaf0;padding:8px 12px;border:1px solid #3d6885;border-radius:30px;white-space:nowrap}
+    .card{background:#172b42;border:1px solid #2c4a64;border-radius:18px;padding:18px;margin-top:14px;box-shadow:0 6px 20px #0002}
+    .hero{text-align:center;background:linear-gradient(135deg,#193b50,#19263f);padding:28px 12px}
+    .label{font-size:13px;color:#bcd4e9}.value{font-size:clamp(48px,12vw,74px);font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums;margin:12px 0 4px}
+    .unit{font-size:17px;font-weight:500;color:#a6cbf3}.subvalue{color:#8bebd2;font-size:14px;margin-top:9px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.metric .v{font-size:24px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+    button{cursor:pointer;touch-action:manipulation;border:none;border-radius:13px;background:#51b6dc;color:#071b2b;font-size:16px;font-weight:700;padding:15px 12px;min-height:48px}
+    button.alt{background:#2e4c65;color:#edf5ff}button:disabled{opacity:.5;cursor:not-allowed}
+    .buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+    .full{width:100%;margin-top:12px}.msg{font-size:13px;color:#c2d9ee;white-space:pre-wrap;line-height:1.65;min-height:23px}
+    .best{color:#8bedc9;font-weight:800}.small{font-size:11px;color:#b0c6dc;line-height:1.7;margin-top:11px}
+    #history{margin:0;padding-left:22px;color:#d8e8fa;font-size:13px;line-height:1.9;max-height:140px;overflow:auto}
+    #history li:first-child{color:#95efd2;font-weight:700}
+    .warn{border-left:3px solid #ffca71;padding-left:10px;color:#dfebf5;font-size:12px;line-height:1.65}
+  </style>
+</head>
+<body>
+<main>
+  <div class="top"><h1>🥋 EMA SPEED</h1><span id="status" class="status">未接続</span></div>
+  <p class="lead">WITMOTION × iPhone｜腕の加速度フィードバック v0.2<br>🔇 通常の計測は無音 ／ 🏆 自己ベスト更新時だけピロロン♪</p>
+  <section class="card hero" aria-live="polite">
+    <div id="headline" class="label">直近1本の加速度変化ピーク</div>
+    <div class="value"><span id="peak">--</span><span class="unit"> g</span></div>
+    <div class="subvalue" id="result">センサー接続後、計測開始してください</div>
+  </section>
+  <div class="grid">
+    <section class="card metric"><div class="label">自己ベスト（実測）</div><div class="v"><span id="best">--</span> <span style="font-size:13px">g</span></div></section>
+    <section class="card metric"><div class="label">受信頻度（推定）</div><div class="v"><span id="hz">--</span> <span style="font-size:13px">Hz</span></div></section>
+  </div>
+  <section class="card">
+    <h2>① 接続して計測</h2>
+    <div class="buttons"><button id="connect">Bluetooth接続</button><button id="disconnect" class="alt" disabled>切断</button></div>
+    <button id="arm" class="full alt" disabled>静止した状態で計測開始</button>
+    <p class="msg" id="message">BluefyなどのWeb Bluetooth対応ブラウザーから、HTTPSで開いてください。</p>
+    <div class="small">WITMOTION公式アプリは接続を切ってから操作してください。最初は机に置いたセンサーで、軽く動かして反応を確認してください。</div>
+  </section>
+  <section class="card">
+    <h2>② 画面・音のデモ</h2>
+    <button id="demo" class="full">♪ ピロロンを1回試聴（手動）</button>
+    <p class="small">このボタンを自分で押したときだけ試聴できます。通常測定では音は鳴りません。試聴の数値は記録されません。</p>
+  </section>
+  <section class="card">
+    <h2>③ 最近の実測記録</h2>
+    <ol id="history"><li>まだ記録はありません</li></ol>
+    <p class="small">実測記録はこのブラウザー内にのみ保存。別ブラウザー・別端末とは同期しません。</p>
+    <button id="clear" class="alt full">実測記録をリセット</button>
+  </section>
+  <section class="card">
+    <h2>この試作版の数字について</h2>
+    <p class="warn">「加速度変化ピーク」は静止時の3軸加速度を基準に、各時刻の差の大きさを計算した暫定指標です。腕の向きの変化や重力の影響を含み、拳の正確な加速度・速度・技の威力ではありません。姿勢・装着位置・計測条件を固定して比較してください。</p>
+    <p class="small">BLEのサービスFFE5／通知FFE4、および0x55 0x61・0x71形式の20バイト通知を想定。お使いの個体での動作は未確認です。設定を書き換える命令は送りません。音を鳴らすにはiPhoneで音量を上げ、最初に画面のボタンを操作してください。画面は前面表示のままにしてください。</p>
+  </section>
+</main>
+<script>
+'use strict';
+const UUID_SVC='0000ffe5-0000-1000-8000-00805f9a34fb';
+const UUID_NOTIFY='0000ffe4-0000-1000-8000-00805f9a34fb';
+const $=id=>document.getElementById(id);
+let bleDevice=null, notifyChar=null, audioCtx=null;
+let intervals=[], lastSampleAt=0, baselineSamples=[], baseline=null;
+let mode='disconnected', capture=null, restUntil=0;
+let history=[];
+let bestEver=null;
+try { history=JSON.parse(localStorage.getItem('emaSpeedRealRecordsV1') || '[]'); if(!Array.isArray(history)) history=[]; } catch { history=[]; }
+history=history.filter(x=>Number.isFinite(x) && x>=0).slice(0,25);
+// 全履歴の最大値は25件の表示履歴とは別に保存。過去ベストの消失を防ぐ。
+try {
+  const saved=localStorage.getItem('emaSpeedBestEverV2');
+  if(saved!==null && Number.isFinite(Number(saved)) && Number(saved)>0)bestEver=Number(saved);
+}catch(e){}
+if(history.length){
+  const fromHistory=Math.max(...history);
+  bestEver=bestEver===null?fromHistory:Math.max(bestEver,fromHistory);
+}
+const setMsg=s=>$('message').textContent=s;
+function refreshHistory(){
+  const b=bestEver;
+  $('best').textContent=b===null?'--':b.toFixed(2);
+  $('history').innerHTML='';
+  if(!history.length){const li=document.createElement('li');li.textContent='まだ記録はありません';$('history').append(li);return;}
+  history.slice(0,10).forEach((v,i)=>{let li=document.createElement('li');li.textContent=`${history.length-i}回目：${v.toFixed(2)} g`;$('history').append(li);});
+}
+refreshHistory();
+// Web Audio はiPhoneで「ユーザーによる操作中」に初期化する必要がある。
+// 無音の信号だけで初期化し、接続/計測開始時には音を出さない。
+function prepareAudioSilently(){
+ try{
+  audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+  const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();
+  gain.gain.value=0;
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start();osc.stop(audioCtx.currentTime+0.02);
+ }catch(e){console.warn('audio setup:',e)}
+}
+function playBestChime(){
+ try{
+  if(!audioCtx)return;
+  if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+  const now=audioCtx.currentTime;
+  [784,988,1175].forEach((freq,i)=>{
+    const osc=audioCtx.createOscillator(),gain=audioCtx.createGain(),t=now+i*.12;
+    osc.type='sine';osc.frequency.value=freq;
+    gain.gain.setValueAtTime(.001,t);
+    gain.gain.exponentialRampToValueAtTime(.15,t+.018);
+    gain.gain.exponentialRampToValueAtTime(.001,t+.19);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t);osc.stop(t+.2);
+  });
+ }catch(e){console.warn('audio:',e)}
+}
+function showPeak(v,isDemo=false){
+  $('peak').textContent=v.toFixed(2);
+  $('headline').textContent=isDemo?'画面デモ（架空の値）':'直近1本の加速度変化ピーク';
+  if(isDemo){
+    $('result').textContent='♪ ピロロン試聴（実測・記録ではありません）';
+    prepareAudioSilently();playBestChime();
+    return;
+  }
+  const oldBest=bestEver;
+  const firstMeasurement=oldBest===null;
+  // 表示が0.01g単位なので、表示値として更新したときのみ祝福する。
+  const newBest=firstMeasurement || Number(v.toFixed(2))>Number(oldBest.toFixed(2));
+  if(newBest){
+    bestEver=v;
+    try{localStorage.setItem('emaSpeedBestEverV2',String(bestEver))}catch(e){}
+  }
+  history.unshift(v);history=history.slice(0,25);
+  try{localStorage.setItem('emaSpeedRealRecordsV1',JSON.stringify(history))}catch(e){}
+  refreshHistory();
+  // 祝福音は2回目以降の「実測で自己ベストを更新した瞬間」に1回だけ。
+  if(newBest && !firstMeasurement){
+    playBestChime();
+    $('result').textContent='🏆 自己ベスト更新！ ピロロン♪';
+  }else if(firstMeasurement){
+    $('result').textContent='初回の基準記録を保存しました（無音）';
+  }else{
+    $('result').textContent='計測完了（無音）';
+  }
+}
+function status(s){$('status').textContent=s;}
+function disconnected(){
+  mode='disconnected';capture=null;baseline=null;baselineSamples=[];lastSampleAt=0;intervals=[];
+  status('未接続');$('connect').disabled=false;$('disconnect').disabled=true;$('arm').disabled=true;$('hz').textContent='--';
+  setMsg('接続が切れました。もう一度Bluetooth接続を押してください。');
+}
+function decodePacket(view){
+  if(view.byteLength < 20 || view.getUint8(0)!==0x55 || ![0x61,0x71].includes(view.getUint8(1)))return null;
+  const xyz=[2,4,6].map(i=>view.getInt16(i,true)/32768*16);
+  return xyz;
+}
+function getDeltaG(v){return Math.hypot(v[0]-baseline[0],v[1]-baseline[1],v[2]-baseline[2]);}
+function onNotify(event){
+  const v=decodePacket(event.target.value);
+  if(!v)return;
+  const now=performance.now();
+  if(lastSampleAt){const d=now-lastSampleAt;if(d>2&&d<1000){intervals.push(d);if(intervals.length>30)intervals.shift();const avg=intervals.reduce((a,b)=>a+b,0)/intervals.length;$('hz').textContent=(1000/avg).toFixed(0);}}
+  lastSampleAt=now;
+  if(mode==='baseline'){
+    baselineSamples.push(v);
+    if(baselineSamples.length>=Math.max(20,Math.min(50,Math.round(Number($('hz').textContent)||20)))){
+      baseline=[0,1,2].map(i=>baselineSamples.reduce((sum,p)=>sum+p[i],0)/baselineSamples.length);
+      mode='armed';baselineSamples=[];status('測定待機');setMsg('準備OK。軽く腕を動かして動作確認し、その後に単独で突きを測定してください。');
+    }
+    return;
+  }
+  if(!baseline)return;
+  const change=getDeltaG(v);
+  if(mode==='armed' && now>restUntil && change>=0.5){
+    mode='capturing';capture={start:now,peak:change};status('計測中');
+  }
+  if(mode==='capturing'){
+    capture.peak=Math.max(capture.peak,change);
+    if(now-capture.start>=350){
+      const p=capture.peak;
+      capture=null;mode='armed';restUntil=now+1100;status('測定待機');
+      if(p>=0.5 && Number.isFinite(p))showPeak(p);
+    }
+  }
+}
+$('connect').onclick=async()=>{
+  prepareAudioSilently(); // 音は出さずiOSの音声機能だけを有効化
+  if(!navigator.bluetooth){setMsg('このブラウザーではWeb Bluetoothが使えません。HTTPSで公開したページをBluefyで開いてください。');return;}
+  $('connect').disabled=true;status('接続中');
+  try{
+    bleDevice=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'WT901'}],optionalServices:[UUID_SVC]});
+    bleDevice.addEventListener('gattserverdisconnected',disconnected);
+    const server=await bleDevice.gatt.connect();
+    const svc=await server.getPrimaryService(UUID_SVC);
+    notifyChar=await svc.getCharacteristic(UUID_NOTIFY);
+    await notifyChar.startNotifications();
+    notifyChar.addEventListener('characteristicvaluechanged',onNotify);
+    mode='connected';status('接続済み');$('disconnect').disabled=false;$('arm').disabled=false;
+    setMsg('接続できました！ センサーを静止させて「計測開始」を押してください。');
+  }catch(e){status('接続失敗');setMsg(`接続できませんでした：${e.message||e}\n公式WITMOTIONアプリを切断し、BLEサービスがFFE5か確認してください。`);$('connect').disabled=false;}
+};
+$('disconnect').onclick=()=>{try{bleDevice?.gatt?.disconnect()}catch{}disconnected();};
+$('arm').onclick=()=>{
+  if(!notifyChar)return;
+  prepareAudioSilently(); // 通常の計測開始は完全に無音
+  mode='baseline';baselineSamples=[];baseline=null;capture=null;restUntil=0;status('基準取得中');
+  setMsg('センサーを約1〜2秒、静止させてください。姿勢基準を自動取得中です。');
+};
+$('demo').onclick=()=>showPeak(2.45,true);
+$('clear').onclick=()=>{
+ if(!confirm('実測の記録をすべて削除しますか？'))return;
+ history=[];bestEver=null;try{localStorage.removeItem('emaSpeedRealRecordsV1');localStorage.removeItem('emaSpeedBestEverV2')}catch{}
+ refreshHistory();$('result').textContent='実測記録をリセットしました';
+};
+</script>
+</body>
+</html>
