@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101d30">
+<title>EMA SPEED v0.5｜受信頻度診断</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;background:#101d30;color:#edf6ff;color-scheme:dark}
+*{box-sizing:border-box} body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at 50% -12%,#244665 0,#101d30 60%);padding:24px 16px 48px}main{max-width:560px;margin:auto}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}h1{font-size:23px;letter-spacing:.08em;margin:0}h2{font-size:15px;margin:0 0 12px}.status{border:1px solid #426883;color:#a3d9f6;border-radius:20px;padding:7px 9px;font-size:12px;white-space:nowrap}
+.lead{font-size:13px;color:#b6cce2;line-height:1.65}.card{background:#172b42;border:1px solid #2e4a67;border-radius:18px;padding:18px;margin-top:14px}.hero{text-align:center;background:linear-gradient(135deg,#193b50,#19263f);padding:24px 12px}.label{font-size:13px;color:#bfd2e7}.value{font-size:clamp(48px,12vw,74px);font-weight:800;line-height:1.25;margin:10px 0;font-variant-numeric:tabular-nums}.unit{font-size:17px;font-weight:500;color:#bad7f1}.result{font-size:13px;color:#93ebcd;min-height:30px;line-height:1.7}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric .v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;margin:6px 0}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}button{border:0;border-radius:12px;min-height:48px;padding:13px 12px;background:#58bade;color:#082032;font-size:15px;font-weight:700;cursor:pointer}button.alt{background:#33516d;color:#ecf6ff}button:disabled{opacity:.48;cursor:not-allowed}.full{width:100%;margin-top:11px}.small{font-size:12px;color:#acc4d8;line-height:1.7}.msg{font-size:13px;color:#d5e7f9;line-height:1.6;min-height:42px;white-space:pre-wrap}.warn{border-left:3px solid #e8bc77;padding-left:11px;color:#d7e8f9}.row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;color:#c9ddef;font-size:14px}.row b{font-variant-numeric:tabular-nums;color:#f2f7ff}#history{padding-left:22px;max-height:185px;overflow:auto;font-size:13px;line-height:1.85}#history li:first-child{color:#95efd2}
+</style>
+</head>
+<body><main>
+<div class="top"><h1>🥋 EMA SPEED</h1><span id="status" class="status">未接続</span></div>
+<p class="lead">Ver.0.5｜Y軸プラス方向・Bluetooth診断付き（測定方式はVer.0.4と同じ）<br>🔇通常は無音 ／ 🏆 ベストを更新した時だけピロロン♪</p>
+<section class="card hero" aria-live="polite">
+<div class="label">計測開始から0.4秒｜Y＋加速度変化ピーク</div>
+<div class="value"><span id="peak">--</span><span class="unit"> g</span></div>
+<div id="result" class="result">接続して「基準取得・計測開始」を押してください</div><div class="label">初めの0.2秒（参考値）：<b id="peak02">--</b> g</div><div class="small">0.2秒: <b id="n02">--</b>点 ／ 0.4秒: <b id="n04">--</b>点<br><span id="quality">未測定</span></div>
+</section>
+<div class="grid">
+<section class="card metric"><div class="label">Y＋自己ベスト</div><div class="v"><span id="best">--</span> <span style="font-size:13px">g</span></div></section>
+<section class="card metric"><div class="label">有効加速度データ頻度（推定）</div><div class="v"><span id="hz">--</span> <span style="font-size:13px">Hz</span></div></section>
+</div>
+<section class="card"><h2>🔎 Bluetooth通信診断</h2>
+<div class="grid">
+<div><div class="label">Bluetooth通知頻度</div><div class="metric v"><b id="notifyHz">--</b> Hz</div></div>
+<div><div class="label">加速度データ頻度</div><div class="metric v"><b id="frameHz">--</b> Hz</div></div>
+<div><div class="label">通知のバイト数（直近）</div><div class="metric v"><b id="bytes">--</b> B</div></div>
+<div><div class="label">通知内の最多データ数</div><div class="metric v"><b id="batchMax">--</b> 件</div></div>
+</div>
+<p class="small" id="diagInfo">通信データを受信すると表示します。</p>
+<p class="small">「通知頻度」はブラウザーに届いた回数、「データ頻度」は20バイトの加速度データを実際に解析できた件数です。いずれも直近約5秒からの推定値で、センサーの真のサンプリング周波数を保証しません。複数データがまとめて届く場合、0.2秒・0.4秒はブラウザーでの受信時刻を使う参考値です。</p>
+</section>
+<section class="card"><h2>① センサー接続と計測</h2>
+<div class="buttons"><button id="connect">Bluetooth接続</button><button id="disconnect" class="alt" disabled>切断</button></div>
+<button id="arm" class="full alt" disabled>基準取得・計測開始</button>
+<p id="message" class="msg">BluefyでこのHTTPSページを開いてください。</p>
+<div class="row"><span>リアルタイムY軸</span><b><span id="rawY">--</span> g</b></div>
+<div class="row"><span>静止時との差 ΔY</span><b><span id="deltaY">--</span> g</b></div>
+<div class="row"><span>最後の有効データ</span><b id="last">未受信</b></div>
+<div class="small">構えの姿勢で1〜2秒静止して基準を取得します。計測後は同じ構えに戻り、少し静止すると次の測定ができるようになります。</div>
+</section>
+<section class="card"><h2>② 効果音の確認</h2><button id="demo" class="full alt">♪ ピロロンを試聴（手動）</button><p class="small">接続・計測開始・通常測定・初回測定は無音です。試聴では記録を変更しません。</p></section>
+<section class="card"><h2>③ Y＋の0.4秒練習記録</h2><ol id="history"><li>まだ記録はありません</li></ol><button id="clear" class="alt full">このバージョンの記録をリセット</button><p class="small">v0.4と同じ0.4秒指標のため記録を引き継ぎます。ただし複数データの読み取りで以前より値が変わる可能性があるため、比較に注意してください。データはこのブラウザーの内部だけに保存されます。</p></section>
+<section class="card"><h2>測定について</h2>
+<p class="warn small">この数値は、静止姿勢でのY軸を基準にした「プラス方向の加速度変化」の指標です。腕の回転・重力変化・装着のずれの影響があり、拳の真の加速度・最高速度・威力を直接示すものではありません。計測0.4秒と参考0.2秒は、Y軸変化が検出しきい値を超えてからの時間です。0.4秒のピークには動作後半も入るため、純粋な初動0.2秒と同一視しません。条件をそろえて比較してください。</p>
+<p class="small">WITMOTION BLEの0x55 0x61（加速度・角速度・姿勢角）だけを解析し、0x71は除外します。受信が約2秒止まった場合は警告し、再開後は基準取得をやり直します。受信頻度が低い場合も確認できるよう、0.4秒の区間に3点以上あれば参考記録として表示します。0.2秒の参考値も表示しますが、受信点数が少ない場合は精密な初動比較には使えません。0.4秒と0.2秒のベストは混ぜません。Bluetoothの設定を書き換える命令は送信しません。診断のため1回のBluetooth通知に含まれる20バイトデータを複数件扱えるようにしました。画面を開いたまま使用してください。</p>
+</section>
+</main><script>
+'use strict';
+const UUID_SVC='0000ffe5-0000-1000-8000-00805f9a34fb';
+const UUID_NOTIFY='0000ffe4-0000-1000-8000-00805f9a34fb';
+const $=id=>document.getElementById(id);
+const K_RECORD='emaSpeedYPositive04secRecordsV4',K_BEST='emaSpeedYPositive04secBestV4';
+const TRIGGER=0.45, RESET=0.18, CAPTURE_MS=400, SHORT_MS=200, MIN_VALID=3, PAUSE_MS=500, STILL_MS=320;
+let bleDevice=null,notifyChar=null,audioCtx=null;
+let lastSampleAt=0,baselineSamples=[],baseline=null,mode='disconnected',capture=null,readyAt=0,stillSince=0;
+let history=[],bestEver=null;
+// 診断用: 受信通知と実際に解析した20byteフレームは分けて数える。
+let notifyTimes=[],sampleTimes=[],rxStartedAt=0,lastNotificationBytes=0,maxFramesInOneNotification=0,skippedBytes=0,ignoredFrames=0,rxBuffer=[];
+try{history=JSON.parse(localStorage.getItem(K_RECORD)||'[]');if(!Array.isArray(history))history=[]}catch{history=[]}
+history=history.filter(v=>Number.isFinite(v)&&v>=0).slice(0,30);
+try{const b=localStorage.getItem(K_BEST);if(b!==null&&Number.isFinite(Number(b))&&Number(b)>=0)bestEver=Number(b)}catch{}
+if(history.length)bestEver=bestEver===null?Math.max(...history):Math.max(bestEver,...history);
+function status(s){$('status').textContent=s}
+function say(s){$('message').textContent=s}
+function renderHistory(){ $('best').textContent=bestEver===null?'--':bestEver.toFixed(2);$('history').replaceChildren();if(!history.length){const li=document.createElement('li');li.textContent='まだ記録はありません';$('history').append(li);return} history.slice(0,12).forEach((v,i)=>{const li=document.createElement('li');li.textContent=`${history.length-i}回目：${v.toFixed(2)} g`;$('history').append(li)})}
+renderHistory();
+function prepAudio(){try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});const o=audioCtx.createOscillator(),g=audioCtx.createGain();g.gain.value=0;o.connect(g).connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+.02)}catch(e){console.warn(e)}}
+function chime(){try{if(!audioCtx)return;if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});const start=audioCtx.currentTime;[784,988,1175].forEach((f,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain(),t=start+i*.13;o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.001,t);g.gain.exponentialRampToValueAtTime(.15,t+.018);g.gain.exponentialRampToValueAtTime(.001,t+.20);o.connect(g).connect(audioCtx.destination);o.start(t);o.stop(t+.21)})}catch(e){console.warn(e)}}
+function saveRecord(v){ const prior=bestEver;const first=prior===null;const improved=first||v>=prior+0.05; if(improved){bestEver=v;try{localStorage.setItem(K_BEST,String(v))}catch{}} history.unshift(v);history=history.slice(0,30);try{localStorage.setItem(K_RECORD,JSON.stringify(history))}catch{};renderHistory();$('peak').textContent=v.toFixed(2);
+ if(improved&&!first){$('result').textContent='🏆 自己ベスト更新！ ピロロン♪';chime()}else if(first){$('result').textContent='初回の基準記録を保存しました（無音）'}else{$('result').textContent='測定完了（無音）'} }
+function resetMetrics(){lastSampleAt=0;notifyTimes=[];sampleTimes=[];rxStartedAt=0;rxBuffer=[];lastNotificationBytes=0;maxFramesInOneNotification=0;skippedBytes=0;ignoredFrames=0;
+$('notifyHz').textContent='--';$('frameHz').textContent='--';$('bytes').textContent='--';$('batchMax').textContent='--';$('diagInfo').textContent='通信データを受信すると表示します。';$('hz').textContent='--';$('rawY').textContent='--';$('deltaY').textContent='--';$('last').textContent='未受信'}
+function resetMeasure(){baseline=null;baselineSamples=[];capture=null;stillSince=0;readyAt=0}
+function disconnected(){mode='disconnected';resetMeasure();resetMetrics();status('未接続');$('connect').disabled=false;$('disconnect').disabled=true;$('arm').disabled=true;notifyChar=null;say('接続が切れました。Bluetoothを再接続してください。')}
+function int16LE(a,i){const n=a[i]|(a[i+1]<<8);return n>=32768?n-65536:n}
+function decodeFrame(a){return [2,4,6].map(i=>int16LE(a,i)/32768*16)}
+function showDiagnose(now){
+ const since=now-5000;
+ notifyTimes=notifyTimes.filter(t=>t>=since);
+ sampleTimes=sampleTimes.filter(t=>t>=since);
+ const seconds=Math.max(1,Math.min(5,(now-rxStartedAt)/1000));
+ const nhz=notifyTimes.length/seconds,shz=sampleTimes.length/seconds;
+ $('notifyHz').textContent=nhz.toFixed(1);
+ $('frameHz').textContent=shz.toFixed(1);
+ $('hz').textContent=shz.toFixed(0);
+ $('bytes').textContent=String(lastNotificationBytes);
+ $('batchMax').textContent=String(maxFramesInOneNotification);
+ $('diagInfo').textContent=(maxFramesInOneNotification>=2?'1回の通知に複数の加速度データが含まれていました。':'現在、1通知あたり1件以下の加速度データを確認しています。')+` 解析待ち ${rxBuffer.length} B / 無視した他データ ${ignoredFrames} 件 / 読み飛ばしたバイト ${skippedBytes} B。`;
+}
+function finishCapture(){
+ const c=capture;capture=null;mode='recovering';readyAt=performance.now()+PAUSE_MS;stillSince=0;status('構えに戻す');
+ if(c){$('n02').textContent=String(c.samples02);$('n04').textContent=String(c.samples);$('peak02').textContent=c.peak02.toFixed(2)}
+ if(!c||c.samples<MIN_VALID||!Number.isFinite(c.peak)||c.peak<TRIGGER){
+  $('quality').textContent='判定不可：0.4秒の受信点が'+(c?c.samples:0)+'点（必要3点）';
+  $('result').textContent='データ不足：今回は記録しません（無音）';
+  say('速さの問題ではありません。Bluetooth受信頻度が少ないためです。受信頻度(Hz)と受信点数を確認してください。');
+ } else {
+  const hz=Number($('hz').textContent);
+  const quality=(c.samples<8 || (Number.isFinite(hz)&&hz<30))?'参考値：データ点数が少ないため誤差に注意':'測定点数は確保（精度の保証ではありません）';
+  $('quality').textContent=quality;
+  saveRecord(c.peak);
+  say('0.4秒区間の参考記録を保存しました。次の測定は元の構えに戻って静止してから。受信点数：'+c.samples+'点。');
+ }
+}
+function processSample(v,now){
+ if(mode==='stalled'){mode='connected';resetMeasure();status('受信再開');say('センサーの受信が再開しました。「基準取得・計測開始」を押してください。')}
+ lastSampleAt=now;$('last').textContent='受信中';$('rawY').textContent=v[1].toFixed(2);
+ if(mode==='baseline'){baselineSamples.push({t:now,v});while(baselineSamples.length>160)baselineSamples.shift();if(baselineSamples.length<12||now-baselineSamples[0].t<850)return;const seq=baselineSamples.slice(-Math.min(50,baselineSamples.length));const yMean=seq.reduce((s,p)=>s+p.v[1],0)/seq.length;const spread=Math.sqrt(seq.reduce((s,p)=>s+(p.v[1]-yMean)**2,0)/seq.length);
+ if(spread>0.12){baselineSamples=baselineSamples.slice(-10);say('動いているようです。構えた姿勢のまま静止して基準を取ってください。');return}
+ baseline=[0,1,2].map(i=>seq.reduce((s,p)=>s+p.v[i],0)/seq.length);baselineSamples=[];mode='armed';status('測定待機');say('準備OK。Y＋への動きを検出します。練習は安全な空間で単独で行ってください。');return}
+ if(!baseline)return;const dy=v[1]-baseline[1];$('deltaY').textContent=(dy>=0?'+':'')+dy.toFixed(2);
+ if(mode==='armed'){if(dy>=TRIGGER){mode='capturing';capture={start:now,peak:dy,samples:1,peak02:dy,samples02:1};status('計測中')}return}
+ if(mode==='capturing'){const elapsed=now-capture.start;capture.peak=Math.max(capture.peak,dy);capture.samples++;if(elapsed<=SHORT_MS){capture.peak02=Math.max(capture.peak02,dy);capture.samples02++}if(elapsed>=CAPTURE_MS)finishCapture();return}
+ if(mode==='recovering'){if(now<readyAt)return;if(Math.abs(dy)<=RESET){if(!stillSince)stillSince=now;if(now-stillSince>=STILL_MS){mode='armed';status('測定待機');say('準備OK。次の1本を測れます。')}}else{stillSince=0}return}
+}
+function onNotify(e){
+ const dv=e.target.value;
+ if(!dv)return;
+ const now=performance.now();
+ const raw=new Uint8Array(dv.buffer,dv.byteOffset,dv.byteLength);
+ if(!rxStartedAt)rxStartedAt=now;
+ notifyTimes.push(now);
+ lastNotificationBytes=raw.length;
+ for(const b of raw)rxBuffer.push(b);
+ if(rxBuffer.length>8192){skippedBytes+=rxBuffer.length-120;rxBuffer=rxBuffer.slice(-120)}
+ let inThisNotification=0;
+ // 通知が20バイトをまたいでも、次の通知と結合して復元する。
+ while(rxBuffer.length>=20){
+   const index=rxBuffer.indexOf(0x55);
+   if(index<0){skippedBytes+=rxBuffer.length;rxBuffer=[];break}
+   if(index>0){skippedBytes+=index;rxBuffer.splice(0,index)}
+   if(rxBuffer.length<20)break;
+   if(rxBuffer[1]===0x61){
+     const frame=rxBuffer.slice(0,20);
+     rxBuffer.splice(0,20);
+     const vals=decodeFrame(frame);
+     sampleTimes.push(now);
+     inThisNotification++;
+     processSample(vals,now);
+   }else if(rxBuffer[1]===0x71){
+     ignoredFrames++;
+     rxBuffer.splice(0,20);
+   }else{
+     // 不明なフレームは先頭をずらして再同期を試す。
+     skippedBytes++;
+     rxBuffer.shift();
+   }
+ }
+ maxFramesInOneNotification=Math.max(maxFramesInOneNotification,inThisNotification);
+ showDiagnose(now);
+}
+let cleanupInProgress=false;
+async function disconnectSafely(){if(cleanupInProgress)return;cleanupInProgress=true;try{if(notifyChar)notifyChar.removeEventListener('characteristicvaluechanged',onNotify);if(bleDevice)bleDevice.removeEventListener('gattserverdisconnected',disconnected);if(bleDevice?.gatt?.connected)bleDevice.gatt.disconnect()}catch(e){console.warn(e)}finally{cleanupInProgress=false;disconnected()}}
+$('connect').onclick=async()=>{prepAudio();if(!navigator.bluetooth){say('このブラウザーではWeb Bluetoothが使えません。BluefyでHTTPSのページを開いてください。');return} $('connect').disabled=true;status('接続中');try{const d=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'WT901'}],optionalServices:[UUID_SVC]});bleDevice=d;d.addEventListener('gattserverdisconnected',disconnected);const gatt=await d.gatt.connect();const svc=await gatt.getPrimaryService(UUID_SVC);const ch=await svc.getCharacteristic(UUID_NOTIFY);await ch.startNotifications();notifyChar=ch;ch.addEventListener('characteristicvaluechanged',onNotify);mode='connected';status('接続済み');$('disconnect').disabled=false;$('arm').disabled=false;say('接続しました。静止して「基準取得・計測開始」を押してください。')}catch(e){status('接続失敗');say(`接続できませんでした：${e?.message||e}\nWITMOTION公式アプリの接続を切って再試行してください。`);$('connect').disabled=false}}
+$('disconnect').onclick=disconnectSafely;
+$('arm').onclick=()=>{if(!notifyChar)return;prepAudio();resetMeasure();mode='baseline';status('基準取得中');say('いつもの構えで1〜2秒間、腕を静止させてください。基準値を読み取っています。')};
+$('demo').onclick=()=>{prepAudio();chime()};
+$('clear').onclick=()=>{if(!confirm('Ver.0.4/0.5で共有している0.4秒記録を削除しますか？（他のバージョンの記録には影響しません）'))return;history=[];bestEver=null;try{localStorage.removeItem(K_RECORD);localStorage.removeItem(K_BEST)}catch{}renderHistory();$('result').textContent='記録をリセットしました';$('peak').textContent='--';$('peak02').textContent='--';$('n02').textContent='--';$('n04').textContent='--';$('quality').textContent='未測定'};
+// BLEリンクがつながったまま通知だけ止まる場合を判別する。
+setInterval(()=>{if(!bleDevice?.gatt?.connected)return;if(!lastSampleAt){$('last').textContent='有効データ待ち';return}const elapsed=performance.now()-lastSampleAt;$('last').textContent=elapsed<1500?`${(elapsed/1000).toFixed(1)}秒前`:'受信停止';if(elapsed>1900&&!['disconnected','stalled','connected'].includes(mode)){mode='stalled';resetMeasure();status('受信停止');say('有効な加速度データが約2秒間届いていません。画面を前面に戻すか、通信を確認してください。受信再開後に基準取得をやり直してください。')}},700);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&bleDevice?.gatt?.connected&&mode!=='connected'&&mode!=='disconnected'){mode='connected';resetMeasure();status('基準を再取得');say('画面に戻りました。正確に比較するため「基準取得・計測開始」を押してください。')}});
+</script></body></html>
