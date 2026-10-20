@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101d30">
+<title>EMA SPEED｜回転共通モード v0.8</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;color-scheme:dark;background:#101d30;color:#eef7ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -10%,#28445e 0,#101d30 65%);min-height:100dvh;padding:20px 14px 55px}main{max-width:610px;margin:auto}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.top h1{font-size:22px;letter-spacing:.06em;margin:0}.pill{font-size:12px;border:1px solid #436582;border-radius:30px;padding:7px 10px;color:#b2daf4;white-space:nowrap}
+.sub{color:#bdd0e1;font-size:13px;line-height:1.7;margin:12px 0}.card{background:#182e45;border:1px solid #31506c;border-radius:17px;margin:13px 0;padding:16px}.hero{background:linear-gradient(125deg,#21475c,#172a42);text-align:center;padding:24px 12px}.kicker{font-size:13px;color:#bbd1e9}.value{font-size:clamp(47px,12vw,70px);font-weight:800;font-variant-numeric:tabular-nums;margin:5px 0;line-height:1.3}.unit{font-size:17px;font-weight:500;color:#bed7ec}.success{color:#8df3c3}.result{font-size:14px;min-height:28px;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.metric{background:#14283d;padding:12px;border:1px solid #2d4a66;border-radius:13px}.metric .number{font-size:clamp(23px,7vw,29px);font-weight:700;line-height:1.4;font-variant-numeric:tabular-nums}.metric label{font-size:12px;color:#b4cce1;display:block;margin-bottom:4px}h2{font-size:16px;margin:0 0 13px}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}button{appearance:none;min-height:48px;padding:12px 10px;border:0;border-radius:12px;background:#58bce4;color:#082236;font-size:15px;font-weight:700;cursor:pointer}button.alt{background:#335573;color:#f1faff}button.line{background:#1c354d;border:1px solid #51718e;color:#e7f6ff}button:disabled{opacity:.45;cursor:not-allowed}button.full{width:100%;margin-top:10px}p.small,small{font-size:12px;line-height:1.7;color:#b6cde1}.message{white-space:pre-wrap;line-height:1.6;font-size:13px;min-height:43px;color:#e1eeff;margin:14px 0}.lineitem{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #32506a;padding:10px 0;font-size:13px}.lineitem b{font-variant-numeric:tabular-nums}input[type=number]{font-size:17px;border:1px solid #55758e;border-radius:10px;background:#0f2236;color:#fff;padding:10px;max-width:120px;width:100%} .refrow{display:flex;justify-content:space-between;gap:8px;align-items:center}.refrow label{font-size:13px}.warn{border-left:3px solid #f2bd75;padding-left:11px}.notice{color:#f5cf8c;font-size:13px}.ok{color:#99efd0;font-size:13px}ol.howto{font-size:13px;line-height:1.85;padding-left:24px;margin:8px 0}#history{padding-left:24px;font-size:13px;line-height:1.9;max-height:190px;overflow:auto}.mono{font-variant-numeric:tabular-nums}.locked{color:#a5f3d1;font-weight:800}.history-item{margin:10px 0;padding:10px;background:#12253a;border:1px solid #35526b;border-radius:10px;list-style-position:inside}.history-item button{min-height:36px;font-size:12px;margin-top:7px;width:100%}.history-item.selected{border-color:#83dbc1}.history-note{font-size:12px;color:#b3cfe3;line-height:1.6} .candidate{background:#10283d;border-radius:10px;padding:10px;font-size:13px;line-height:1.7;margin:10px 0}summary{cursor:pointer;font-weight:bold}button:focus-visible,input:focus-visible{outline:3px solid #f4da88;outline-offset:2px}
+</style>
+</head>
+<body><main>
+<div class="top"><h1>🥋 EMA SPEED</h1><span class="pill" id="connection">未接続</span></div>
+<p class="sub">Ver.0.8｜<strong>回転共通モード（腰の回転）</strong><br>挙動14・挙動22など、左右どちら向きでも測定可能。最大回転角速度を大きく表示し、回転時間も残します。測定後は結果を固定。角度別のベスト速度を更新した時だけ「ピロロン♪」</p>
+<section class="card hero" aria-live="polite"><div class="kicker">今回の最大回転角速度</div><div class="value"><span id="peak">--</span><span class="unit"> °/秒</span></div><div id="result" class="result">Bluetooth接続 → 静止して基準取得</div><div class="kicker">判定：<span id="quality">未測定</span></div><div id="freeze" class="locked">測定待ち</div></section>
+<div class="grid">
+<div class="metric"><label>回転時間</label><div class="number"><span id="duration">--</span> <span class="unit">秒</span></div></div>
+<div class="metric"><label>回転角度（推定）</label><div class="number"><span id="angle">--</span> <span class="unit">°</span></div></div>
+<div class="metric"><label>角度の分類（左右共通）</label><div class="number"><span id="group">--</span></div></div>
+<div class="metric"><label>同じ角度グループのベスト回転速度</label><div class="number"><span id="best">--</span> <span class="unit">°/秒</span></div></div>
+</div>
+<section class="card"><h2>① センサー接続・回転測定</h2>
+<div class="buttons"><button id="connect">Bluetooth接続</button><button id="disconnect" class="alt" disabled>切断</button></div>
+<button id="arm" class="alt full" disabled>静止して「次の1本を測る」</button>
+<p class="ok" id="oneShotHelp">※ 上部の測定結果は自動で固定。下の「ライブ角速度」だけは動き続けます。次の1本はボタンを押すまで測りません。</p>
+<p id="message" class="message">Bluefyで、このページをHTTPSから開いてください。</p>
+<div class="lineitem"><span>ライブ角速度（※ここだけ動き続けます）</span><b><span id="live">--</span> °/秒</b></div>
+<div class="lineitem"><span>ジャイロ X / Y / Z</span><b id="axes">-- / -- / --</b></div>
+<div class="lineitem"><span>有効データ頻度（直近）</span><b><span id="hz">--</span> Hz</b></div>
+<div class="lineitem"><span>1回の回転のデータ点数</span><b id="samples">--</b></div>
+<div class="lineitem"><span>受信状態</span><b id="rx">未受信</b></div>
+<p class="small">センサーは腰の後ろ・身体の中心に固定。本体の向きは毎回そろえ、最初に1〜2秒静止してください。回転を検出したら記録し、止まったら結果を固定します。その後は次の測定ボタンを押すまで値は上書きされません。腰の回転を測るもので、足裏の回転や姿勢の良し悪しは単独で判定できません。</p>
+</section>
+<section class="card"><h2>② 最大回転角速度の自己ベスト</h2>
+<p class="small">90°・180°・270°・360°付近の回転を自動分類し、<strong>右回り・左回りの区別なく</strong>同じ角度グループで最大回転角速度を比較します。分類外の回転も測定・表示・履歴保存できます（自己ベストの比較はしません）。</p>
+<div class="lineitem"><span>90°付近</span><b id="best90">-- °/秒</b></div>
+<div class="lineitem"><span>180°付近</span><b id="best180">-- °/秒</b></div>
+<div class="lineitem"><span>270°付近</span><b id="best270">-- °/秒</b></div>
+<div class="lineitem"><span>360°付近</span><b id="best360">-- °/秒</b></div>
+<p class="small">初回の比較可能な測定は無音で保存。以後、同じ角度グループで過去のベスト角速度を5%以上（かつ20°/秒以上）更新したときだけ「ピロロン♪」。それより小さい更新も数値は保存します。回転時間は毎回表示・履歴保存します。角度が近くても挙動が異なる場合、技術的な優劣とはみなしません。<strong>挙動22の22-a基準や旧アプリの履歴は変更しません。</strong></p>
+<button class="full line" id="clearStats">この回転共通版の自己ベスト・履歴をリセット</button>
+</section>
+<section class="card"><h2>③ 音のテスト</h2><button id="demo" class="alt full">♪ ピロロンを試聴（手動）</button><p class="small">通常測定・接続・初回記録は無音です。iPhoneでは省電力モードやブラウザーの音声設定が影響する場合があります。</p></section>
+<section class="card"><h2>④ 最近の回転記録</h2><p class="small">最大回転角速度と測定結果は毎回固定され、古い結果も履歴に残ります。左右の方向はベスト判定に使いません。</p><ol id="history"><li>記録はまだありません</li></ol><p class="small">Ver.0.8の記録はBluefy内に新しく保存します。旧版（挙動22専用）のデータは消しません。</p></section>
+<section class="card"><details><summary>通信診断・測定上の注意を見る</summary>
+<div class="lineitem"><span>Bluetooth通知頻度</span><b><span id="notificationHz">--</span> Hz</b></div>
+<div class="lineitem"><span>加速度・角速度データ頻度</span><b><span id="dataHz">--</span> Hz</b></div>
+<div class="lineitem"><span>直近通知サイズ</span><b><span id="bytes">--</span> B</b></div>
+<div class="lineitem"><span>1通知の最多フレーム数</span><b id="maxbatch">--</b></div>
+<p id="diag" class="small">通知待機中です。</p>
+<p class="small warn">角速度はWT901BLE系の0x55 0x61フレーム（X/Y/Z、±2000°/秒）を解析します。装着時の静止加速度から鉛直軸を推定します。身体が傾くと軸の推定に誤差が生じます。回転角度はジャイロ角速度の時間積分による参考値で、Bluetoothの受信遅れ・まとめ受信・データ欠落に影響されます。姿勢・足裏の状態や技の完成度は動画でも確認してください。データが少ない、通信間隔が不規則、十分に止まっていない試技はベスト更新の対象外にします。</p>
+<p class="small">回転時間の定義は「鉛直軸の角速度が開始しきい値を超えた瞬間付近」から「停止しきい値を下回った瞬間付近」まで。閾値は現在、開始70°/秒、停止25°/秒。角速度ピークが約1950°/秒を超えた場合は測定レンジ上限に近いため比較対象外。測定間隔が約0.12秒を超えたときも精度不足として比較対象外にします。推定のため、数十ミリ秒の差を決定的な優劣とみなしません。</p>
+</details></section>
+<section class="card"><h2>使い方</h2><ol class="howto"><li>WITMOTIONを腰の後ろの中心に、ずれないよう柔らかいポーチで固定する。</li><li>BluefyでBluetooth接続する。</li><li>自然に構えて1〜2秒静止し「静止して基準取得・測定待機」を押す。</li><li>周囲にぶつかる物がないことを確認して、測りたい回転を1回行い、止まる。</li><li>最大回転角速度・回転時間・推定角度が固定されたら確認する。仮基準の登録は不要。</li><li>次の回転は構え直して静止し、もう一度「次の1本を測る」を押す。条件に合う自己ベストならピロロン♪</li></ol><p class="small">これは実機での動作検証前の試作版です。最大回転角速度は受信頻度によりピークを見逃すことがあり、回転時間も開始・停止しきい値に依存する参考値です。音のために回転を急がず、形の正しいフォームを優先してください。</p></section>
+</main>
+<script>
+'use strict';
+// WT901BLE family: 0x55 0x61 + 9 signed int16 LE (a[3],gyro[3],Euler[3]).
+const SERVICE='0000ffe5-0000-1000-8000-00805f9a34fb';
+const NOTIFY='0000ffe4-0000-1000-8000-00805f9a34fb';
+const $=id=>document.getElementById(id);
+const STORAGE='emaSpeedRotationV08Peak'; // 旧版のマスター記録には触れない
+const START_DPS=70,END_DPS=25,STILL_DPS=55,START_CONFIRM=2,STOP_HOLD_MS=230;
+const MIN_PEAK=100,MIN_ANGLE=35,MIN_SAMPLES=8,MAX_GAP_MS=120,MAX_TRIAL_MS=3000;
+let device=null,char=null,audioCtx=null,state='disconnected',lastFrameTime=0,lastNotifyTime=0;
+let gyroBias=[0,0,0],up=[0,0,1],calibration=[],trial=null,startCandidate=null,stillStart=0,lastGoodTrial=null;
+let rxBuf=[],rxNotifyTimes=[],rxFrameTimes=[],maxBatch=0,lastBytes=0,rxCount=0,lastRender=0,records=[],bests={};
+try{const saved=JSON.parse(localStorage.getItem(STORAGE)||'{}');if(Array.isArray(saved.records))records=saved.records.slice(0,40);if(saved.bests&&typeof saved.bests==='object')for(const k of ['90','180','270','360'])if(Number.isFinite(saved.bests[k])&&saved.bests[k]>0)bests[k]=saved.bests[k];}catch{}
+function setText(id,s){$(id).textContent=s}function status(s){setText('connection',s)}function say(s){setText('message',s)}
+function persist(){try{localStorage.setItem(STORAGE,JSON.stringify({records,bests}))}catch{}}
+function classify(angle){
+ if(!Number.isFinite(angle))return null;
+ let best=null,diff=Infinity;
+ for(const target of [90,180,270,360]){const d=Math.abs(angle-target);if(d<=Math.max(15,target*.15)&&d<diff){best=String(target);diff=d;}}
+ return best;
+}
+function updateHistory(){
+ const list=$('history');list.replaceChildren();
+ if(!records.length){const li=document.createElement('li');li.textContent='記録はまだありません';list.append(li);return;}
+ for(const v of records.slice(0,18)){
+  const li=document.createElement('li');li.className='history-item';li.textContent=`${v.time}｜最大${v.peak.toFixed(0)}°/秒｜${v.duration.toFixed(2)}秒｜推定${v.angle.toFixed(0)}°｜${v.group?v.group+'°付近':'分類外'}｜${v.label}`;list.append(li);
+ }
+}
+function updateBests(active=null){
+ for(const g of ['90','180','270','360'])setText('best'+g,Number.isFinite(bests[g])?bests[g].toFixed(0)+' °/秒':'-- °/秒');
+ setText('best',active&&Number.isFinite(bests[active])?bests[active].toFixed(0):'--');
+}
+updateBests();updateHistory();
+function prepareAudio(){try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();gain.gain.value=0;osc.connect(gain).connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+.02);}catch(e){console.warn('audio',e)}}
+function chime(){try{if(!audioCtx)return;if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});const t=audioCtx.currentTime;[784,988,1175].forEach((freq,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain(),st=t+.13*i;o.type='sine';o.frequency.value=freq;g.gain.setValueAtTime(.001,st);g.gain.exponentialRampToValueAtTime(.14,st+.024);g.gain.exponentialRampToValueAtTime(.001,st+.22);o.connect(g).connect(audioCtx.destination);o.start(st);o.stop(st+.23)})}catch(e){console.warn(e)}}
+function num16(a,i){let n=a[i]|a[i+1]<<8;return n>32767?n-65536:n}
+function decode(a){return {a:[2,4,6].map(i=>num16(a,i)*16/32768),g:[8,10,12].map(i=>num16(a,i)*2000/32768),e:[14,16,18].map(i=>num16(a,i)*180/32768)}}
+function length(v){return Math.hypot(...v)}
+function dot(a,b){return a.reduce((s,v,i)=>s+v*b[i],0)}
+function setState(s,label){state=s;status(label)}
+function resetRun(){trial=null;startCandidate=null;stillStart=0; /* 有効な基準候補は消さない */ }
+function disconnected(){setState('disconnected','未接続');device=null;char=null;resetRun();calibration=[];lastFrameTime=0;lastNotifyTime=0;rxBuf=[];$('connect').disabled=false;$('disconnect').disabled=true;$('arm').disabled=true;setText('rx','切断');say('接続が切れました。再接続してください。')}
+function cancelAndRecalibrate(reason){resetRun();setState('connected','再基準取得');say(reason+'。「静止して基準取得・測定待機」を押してください。')}
+function displayLive(frame,t){if(t-lastRender<90)return;lastRender=t;setText('live',dot(frame.g.map((v,i)=>v-gyroBias[i]),up).toFixed(0));setText('axes',frame.g.map(v=>v.toFixed(0)).join(' / '));setText('rx','受信中')}
+function beginTrial(s,t){setText('freeze','計測中…');trial={start:t,previousT:t,previousW:s.w,dir:Math.sign(s.w),peak:Math.abs(s.w),net:0,count:1,maxGap:0,stopStart:null,stopTime:null,stopAngle:null,stopPeak:null,hasBurst:s.batched,ended:false,saturated:Math.abs(s.w)>1950};startCandidate=null;setState('spinning','回転計測中');setText('result','回転中…');}
+function completeTrial(t,forced=false){if(!trial)return;const c=trial;trial=null;startCandidate=null;stillStart=0;
+ let end=c.stopStart==null?t:c.stopStart;
+ let dur=Math.max(0,(end-c.start)/1000);
+ let angle=Math.abs(c.stopAngle==null?c.net:c.stopAngle);
+ let valid= !forced&&c.count>=MIN_SAMPLES&&c.peak>=MIN_PEAK&&angle>=MIN_ANGLE&&dur>=.10&&dur<2.8&&!c.saturated&&c.maxGap<=MAX_GAP_MS&&Number.isFinite(angle);
+ let problems=[];if(forced)problems.push('停止を検出できませんでした');if(c.count<MIN_SAMPLES)problems.push('データ点数不足');if(c.maxGap>MAX_GAP_MS)problems.push('受信間隔が長すぎます');if(c.saturated)problems.push('角速度の測定上限付近');if(angle<MIN_ANGLE)problems.push('回転角度が少なすぎます');if(dur<.10)problems.push('測定時間が短すぎます');
+ setText('peak',c.peak.toFixed(0));setText('duration',dur.toFixed(2));setText('angle',angle.toFixed(0));setText('samples',String(c.count));
+ const group=classify(angle);setText('group',group?group+'°付近':'分類外');
+ const outcome={time:new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}),peak:c.peak,duration:dur,angle,dir:c.dir,group,valid,bursts:c.hasBurst,maxGap:c.maxGap,label:''};
+ let label='',message='';
+ if(!valid){label='参考値・判定不可';message='今回は比較対象外（'+(problems.join('、')||'通信または停止判定に問題')+'）。最大角速度と回転時間は表示・保存します。';setText('quality',message)}
+ else if(!group){label='角度分類外';message='最大回転角速度と回転を記録しました。角度が既定のグループ外なのでベスト判定はありません。';setText('quality',`推定${angle.toFixed(0)}°：自由測定・参考値`)}
+ else if(c.hasBurst){label='まとめ受信・参考';message='受信がまとまって届いたので回転の計測値は参考値、自己ベスト判定はしません。';setText('quality','通信間隔が不確実：ベスト判定なし')}
+ else if(!Number.isFinite(bests[group])){bests[group]=c.peak;label='初回記録（無音）';message=`${group}°付近の初回記録（最大${c.peak.toFixed(0)}°/秒）を保存しました（無音）。`;setText('quality',`比較可能な${group}°付近・${c.count}点`)}
+ else if(c.peak>bests[group]){const previous=bests[group];bests[group]=c.peak;const audible=c.peak-previous>=Math.max(20,previous*.05);label=audible?'🏆 ベスト速度更新':'ベスト速度を小幅更新（無音）';message=audible?`🏆 ${group}°付近で最大回転角速度のベスト更新！ ピロロン♪`:`${group}°付近で最大回転角速度を小幅更新（無音）。`;setText('quality',`比較可能な${group}°付近・${c.count}点`);if(audible)chime()}
+ else{label='測定完了（無音）';message=`${group}°付近の最大回転角速度と回転時間を記録しました（無音）。`;setText('quality',`比較可能な${group}°付近・${c.count}点`)}
+ outcome.label=label;records.unshift(outcome);records=records.slice(0,40);persist();updateBests(group);updateHistory();setText('result',message);
+ setText('freeze','🔒 今回の結果を固定しました');
+ say(message+' 結果は固定済みです。次の試技は「次の1本を測る」を押してから計測します。');
+ setState('review','結果固定中');
+}
+function onFrame(v,t,batched){lastFrameTime=performance.now();if(state==='stalled'){setState('connected','受信再開');say('受信が再開しました。基準取得をやり直してください。')}displayLive(v,t);
+ if(state==='calibration'){
+  calibration.push({t,a:v.a,g:v.g});while(calibration.length>150)calibration.shift();
+  if(calibration.length<12||t-calibration[0].t<1100)return;
+  const chunk=calibration.slice(-Math.min(55,calibration.length));const avgG=[0,1,2].map(i=>chunk.reduce((s,p)=>s+p.g[i],0)/chunk.length);
+  const avgA=[0,1,2].map(i=>chunk.reduce((s,p)=>s+p.a[i],0)/chunk.length);
+  const normA=length(avgA);const spread=Math.sqrt(chunk.reduce((s,p)=>s+Math.pow(length(p.g.map((x,i)=>x-avgG[i])),2),0)/chunk.length);
+  if(spread>12||normA<.65||normA>1.4){calibration=calibration.slice(-12);say('基準取得中です。腰を動かさず、自然に立ってください。');return}
+  gyroBias=avgG;up=avgA.map(x=>x/normA);calibration=[];resetRun();setState('ready','1本のみ測定待機');setText('freeze','計測待機中');say('基準取得できました。測りたい回転を1回行い、止まってください。結果は次のボタン操作まで固定されます。');return;
+ }
+ if(!['ready','spinning'].includes(state))return;
+ const w=dot(v.g.map((x,i)=>x-gyroBias[i]),up);const mag=length(v.g.map((x,i)=>x-gyroBias[i]));
+ if(state==='ready'){
+  if(Math.abs(w)>START_DPS){const cur={w,batched};if(startCandidate&&Math.sign(startCandidate.w)===Math.sign(w)&&t-startCandidate.t<180){beginTrial({w:startCandidate.w,batched:batched||startCandidate.batched},startCandidate.t);onFrame(v,t,batched);return;}startCandidate={w,t,batched};}
+  else startCandidate=null;
+  return;
+ }
+ if(state==='spinning'){
+  const c=trial;if(!c)return;
+  const dt=t-c.previousT;
+  if(dt<0)return;
+  c.maxGap=Math.max(c.maxGap,dt);
+  if(dt>300){cancelAndRecalibrate('受信が途切れたため回転を中止しました');return;}
+  const signed=w*c.dir;
+  c.net+=.5*(c.previousW*c.dir+signed)*dt/1000;
+  c.previousW=w;c.previousT=t;c.peak=Math.max(c.peak,Math.abs(w));c.count++;c.hasBurst ||= batched;c.saturated ||= Math.abs(w)>1950;
+  if(Math.abs(w)<END_DPS&&mag<STILL_DPS){
+   if(c.stopStart==null){c.stopStart=t;c.stopAngle=c.net;c.stopPeak=c.peak;}
+   else if(t-c.stopStart>=STOP_HOLD_MS){completeTrial(t);return;}
+  }else c.stopStart=null;
+  if(t-c.start>MAX_TRIAL_MS){completeTrial(t,true);return;}
+ }
+}
+function showDiag(now){rxNotifyTimes=rxNotifyTimes.filter(t=>t>now-5000);rxFrameTimes=rxFrameTimes.filter(t=>t>now-5000);const span=Math.min(5,Math.max(1,(now-(window._rxFirst||now))/1000));setText('notificationHz',(rxNotifyTimes.length/span).toFixed(1));setText('dataHz',(rxFrameTimes.length/span).toFixed(1));setText('hz',(rxFrameTimes.length/span).toFixed(0));setText('bytes',String(lastBytes));setText('maxbatch',String(maxBatch));setText('diag',maxBatch>1?'複数フレームをまとめて受信しています。時間・角度は参考値として扱います。':'1通知あたりのフレームは現時点で最大1件です。')}
+function onNotify(e){const dv=e.target.value;if(!dv)return;const now=performance.now();if(!window._rxFirst)window._rxFirst=now;rxNotifyTimes.push(now);const raw=new Uint8Array(dv.buffer,dv.byteOffset,dv.byteLength);lastBytes=raw.length;
+ for(const b of raw)rxBuf.push(b);
+ if(rxBuf.length>8192)rxBuf=rxBuf.slice(-120);
+ const frames=[];
+ while(rxBuf.length>=20){const idx=rxBuf.indexOf(0x55);if(idx<0){rxBuf=[];break}if(idx>0)rxBuf.splice(0,idx);if(rxBuf.length<20)break;
+ if(rxBuf[1]===0x61){frames.push(decode(rxBuf.slice(0,20)));rxBuf.splice(0,20)}else if(rxBuf[1]===0x71){rxBuf.splice(0,20)}else rxBuf.shift();}
+ maxBatch=Math.max(maxBatch,frames.length);
+ // Browser notification is stamped, not the original sensor sample. Distribute
+ // bundled frames over the last notification interval ONLY as an approximation.
+ const gap=lastNotifyTime?now-lastNotifyTime:40*frames.length;
+ const batched=frames.length>1||gap>150;
+ for(let i=0;i<frames.length;i++){
+  const t=now-(frames.length-1-i)*Math.max(1,gap/Math.max(1,frames.length));
+  rxFrameTimes.push(now);onFrame(frames[i],t,batched);
+ }
+ lastNotifyTime=now;if(now-(window._diagLast||0)>450){window._diagLast=now;showDiag(now);}
+}
+async function stopBLE(){try{if(char)char.removeEventListener('characteristicvaluechanged',onNotify);if(device)device.removeEventListener('gattserverdisconnected',disconnected);if(device?.gatt?.connected)device.gatt.disconnect()}catch(e){console.warn(e)}disconnected()}
+$('connect').onclick=async()=>{
+ prepareAudio();if(!navigator.bluetooth){say('Web Bluetoothが利用できません。BluefyでHTTPSから開いてください。');return}
+ $('connect').disabled=true;status('接続中');
+ try{
+  const d=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'WT901'}],optionalServices:[SERVICE]});device=d;d.addEventListener('gattserverdisconnected',disconnected);
+  const server=await d.gatt.connect(),svc=await server.getPrimaryService(SERVICE),n=await svc.getCharacteristic(NOTIFY);
+  await n.startNotifications();char=n;n.addEventListener('characteristicvaluechanged',onNotify);
+  rxBuf=[];rxNotifyTimes=[];rxFrameTimes=[];lastNotifyTime=0;lastFrameTime=0;maxBatch=0;window._rxFirst=0;
+  setState('connected','接続済み');$('disconnect').disabled=false;$('arm').disabled=false;
+  say('接続できました。腰を静止して「静止して基準取得・測定待機」を押してください。');
+ }catch(e){status('接続失敗');say('接続エラー：'+(e?.message||e)+'。WITMOTION公式アプリの接続を切って再試行してください。');$('connect').disabled=false}
+};
+$('disconnect').onclick=stopBLE;
+$('arm').onclick=()=>{if(!char)return;prepareAudio();resetRun();calibration=[];setState('calibration','基準取得中');setText('freeze','基準取得中');say('腰の後ろのセンサーを固定したまま、1〜2秒自然に静止してください。')};
+$('demo').onclick=()=>{prepareAudio();chime()};
+$('clearStats').onclick=()=>{if(!confirm('この回転共通版の自己ベストと履歴をすべて消しますか？ 古いバージョンの記録は残ります。'))return;bests={};records=[];persist();updateBests();updateHistory();setText('result','Ver.0.8の記録をリセットしました');};
+setInterval(()=>{
+ if(!device?.gatt?.connected)return;
+ if(!lastFrameTime){setText('rx','データ待機中');return;}
+ const dt=performance.now()-lastFrameTime;
+ if(dt>1900){setText('rx','1.9秒以上データなし');if(!['connected','stalled','disconnected','review'].includes(state)){resetRun();setState('stalled','受信停止');say('角速度データが届かなくなりました。Bluefyを前面に戻し、再度基準を取得してください。')}}
+ else setText('rx',`${(dt/1000).toFixed(1)}秒前`);
+},650);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&device?.gatt?.connected){if(!['connected','disconnected','review'].includes(state))cancelAndRecalibrate('アプリ画面に戻ったため測定を安全側にリセットしました')}});
+</script>
+</body></html>
