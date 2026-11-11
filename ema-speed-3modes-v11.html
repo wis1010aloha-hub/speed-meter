@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#122037">
+<title>EMA SPEED｜3モード試作 Ver.1.1</title>
+<style>
+:root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;color:#ecf5ff;background:#101d30}
+*{box-sizing:border-box}body{margin:0;min-height:100dvh;padding:19px 14px 56px;background:radial-gradient(ellipse at top,#29465e 0,#101d30 69%)}main{max-width:600px;margin:auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}h1{font-size:23px;letter-spacing:.045em;margin:0}h2{font-size:16px;margin:0 0 12px}small,.muted{color:#abc5dc;font-size:12px;line-height:1.7}.intro{margin:9px 0 15px;line-height:1.7;font-size:13px;color:#bed3e7}.status{border:1px solid #50738f;border-radius:24px;padding:6px 9px;font-size:12px;white-space:nowrap;color:#a7e1fd}
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:16px 0}.tab{font-size:14px;border-radius:12px;min-height:47px;border:1px solid #527591;background:#213a53;color:#d8eaff;padding:8px 4px;font-weight:700}.tab[aria-selected="true"]{background:#b6e9fb;color:#102337;border-color:#b6e9fb}.card{background:#192f46;border:1px solid #365673;border-radius:18px;padding:17px;margin:12px 0}.hero{background:linear-gradient(120deg,#244b62,#172c45);text-align:center;padding:23px 14px}.big{font-size:clamp(53px,13vw,79px);line-height:1.22;font-weight:800;font-variant-numeric:tabular-nums;margin:7px 0}.unit{color:#c1dbf0;font-size:17px;font-weight:500}.kicker{color:#c4d8eb;font-size:13px}.outcome{min-height:22px;font-size:14px;line-height:1.6;color:#9af1cb;font-weight:650}.substatus{font-size:12px;color:#b8d6e8;line-height:1.6;margin-top:6px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:10px 0}.tile{border:1px solid #365673;background:#16293f;border-radius:14px;padding:12px;min-width:0}.tile label{display:block;color:#b6cde0;font-size:12px;margin-bottom:4px}.tile strong{font-size:clamp(20px,6.4vw,29px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.tile span{font-size:13px;color:#bbd5e5}.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}button{appearance:none;border:0;border-radius:12px;padding:11px;min-height:46px;background:#69c4e8;color:#0a2334;font-weight:750;font-size:15px;cursor:pointer}button.secondary{background:#355673;color:#f2faff}button.outline{background:transparent;border:1px solid #547695;color:#eaf7ff}button:disabled{opacity:.42;cursor:not-allowed}.full{width:100%;margin-top:10px}.message{font-size:13px;line-height:1.75;color:#dceaf6;white-space:pre-wrap;min-height:42px;margin:12px 0}.item{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;line-height:1.6;border-top:1px solid #35516a;padding:9px 0}.item b{font-variant-numeric:tabular-nums;text-align:right}.hint{border-left:3px solid #eac078;padding-left:10px;margin:10px 0;color:#cfdfef;font-size:12px;line-height:1.75}.green{color:#9cf4ce}.review{font-size:12px;color:#95e9d0;font-weight:750}#history{padding-left:20px;font-size:13px;line-height:1.7;max-height:210px;overflow:auto}#history li{padding:7px 0;border-bottom:1px solid #324e65}summary{cursor:pointer;font-weight:700}details p{line-height:1.7;font-size:12px;color:#bbd4e8}button:focus-visible{outline:3px solid #fce1a4;outline-offset:3px}
+</style>
+</head>
+<body><main>
+<header><h1>🥋 EMA SPEED</h1><span id="status" class="status">未接続</span></header>
+<p class="intro">Ver.1.1｜3モード統合・通知判定の改善版<br>初回は無音で基準登録。その後、自己ベストを一定以上更新したときだけ「ピロロン♪」。普段の測定は無音です。</p>
+<div class="modes" role="tablist" aria-label="測定モード">
+<button type="button" id="tabPunch" class="tab" role="tab" aria-selected="true" data-mode="punch">🥊 突き</button>
+<button type="button" id="tabFoot" class="tab" role="tab" aria-selected="false" data-mode="foot">🦶 足の初動</button>
+<button type="button" id="tabRotation" class="tab" role="tab" aria-selected="false" data-mode="rotation">🔄 回転</button>
+</div>
+<section class="card hero" aria-live="polite">
+<div id="measureTitle" class="kicker">突き｜Y+加速度変化ピーク</div>
+<div class="big"><span id="primary">--</span><span class="unit" id="primaryUnit"> g</span></div>
+<div class="outcome" id="result">Bluetooth接続 → 静止して基準取得</div>
+<div class="substatus" id="quality">まだ測定していません</div>
+<div class="review" id="freeze">測定待ち</div>
+</section>
+<div class="grid">
+<div class="tile"><label id="metric1Label">初めの0.2秒</label><strong id="metric1">--</strong> <span id="metric1Unit">g</span></div>
+<div class="tile"><label id="metric2Label">0.4秒の測定点数</label><strong id="metric2">--</strong> <span id="metric2Unit">点</span></div>
+<div class="tile"><label id="metric3Label">同モードの自己ベスト</label><strong id="metric3">--</strong> <span id="metric3Unit">g</span></div>
+<div class="tile"><label>受信データ頻度（推定）</label><strong id="hz">--</strong> <span>Hz</span></div>
+</div>
+<section class="card"><h2>① センサー接続と計測</h2>
+<div class="btnrow"><button id="connect">Bluetooth接続</button><button id="disconnect" class="secondary" disabled>切断</button></div>
+<button id="arm" class="secondary full" disabled>静止して基準取得・次の1本を測る</button>
+<p id="message" class="message">BluefyでHTTPSのページを開いてください。</p>
+<div class="item"><span>センサー装着位置</span><b id="placement">右前腕・手の甲側</b></div>
+<div class="item"><span>リアルタイム値（参考）</span><b id="live">--</b></div>
+<div class="item"><span>受信状態</span><b id="received">未受信</b></div>
+<p class="muted">モードを切り替えたりセンサーを付け替えたりしたら、毎回「静止して基準取得」を押してください。1本終わると測定結果を固定し、次の1本はボタンを押した後だけ測定します。</p>
+</section>
+<section class="card"><h2>② 自己ベスト・測定履歴</h2>
+<p id="bestExplanation" class="muted">初回は無音で保存。別モードとは混ぜて比較しません。</p>
+<ol id="history"><li>まだ測定記録はありません</li></ol>
+<p class="muted">3モード版の記録はこのiPhoneのBluefy内に保存します。Ver.0.5やVer.0.9の記録は書き換えません。新アプリでは新しい基準から始めます。</p>
+</section>
+<section class="card"><h2>③ ピロロン音のテスト</h2>
+<button id="sound" class="secondary full">♪ ピロロンを試聴（手動）</button>
+<p class="muted">測定は通常無音です。最初の有効な1本を基準として保存し、次の有効な測定で自己ベストを十分に更新したときだけピロロン♪を鳴らします。鳴らないときはまず「音を試聴」を押してください。iPhoneの低電力モードはOFFを推奨します。</p>
+</section>
+<section class="card"><details><summary>通信診断・精度と安全について</summary>
+<div class="item"><span>Bluetooth通知頻度</span><b id="notifyHz">-- Hz</b></div>
+<div class="item"><span>有効データ頻度</span><b id="dataHz">-- Hz</b></div>
+<div class="item"><span>直近の通知サイズ</span><b id="bytes">-- B</b></div>
+<div class="item"><span>1通知の最多フレーム数</span><b id="batch">--</b></div>
+<p>WT901BLE系の0x55 0x61フレームを前提に、3軸加速度・3軸角速度を読み取ります。別機種や通信形式では動かない場合があります。Bluetoothの通知時刻を使うため、実際のセンサー測定時刻や最大値到達時間とは一致しない場合があります。</p>
+<p>突き：Y軸プラス方向の変化。足の初動：静止基準からの3軸合成変化。いずれも腕・脚の回転による重力変化が混ざり、拳の実速度や、足が床から離れた正確な瞬間は測れません。回転：静止時の重力方向から鉛直軸成分を求めるため、身体の傾きや通信欠落で誤差が出ます。</p>
+<p>センサーは柔らかく確実に固定し、強く締めすぎず、周囲にぶつかる物や相手がいない状態で試してください。測定値だけでフォームの良否を判断せず、動画でも確認します。</p>
+</details></section>
+</main>
+<script>
+'use strict';
+const SERVICE='0000ffe5-0000-1000-8000-00805f9a34fb';
+const NOTIFY='0000ffe4-0000-1000-8000-00805f9a34fb';
+const STORE='emaSpeedUnifiedThreeModesV10';
+const $=id=>document.getElementById(id);
+const modeText={
+ punch:{title:'突き｜Y+加速度変化ピーク',place:'前腕・手の甲側（長辺を腕方向に）',best:'同じ装着位置・Y+方向の0.4秒ピークで比較。初回無音、更新時だけピロロン♪。'},
+ foot:{title:'足の初動｜3軸加速度変化ピーク',place:'すね下部（足首の関節を避けて固定）',best:'足の初動の試験指標。8点以上などの条件を満たせば、まとめ受信でもピーク値を暫定比較。足が床から離れる時刻は測れません。'},
+ rotation:{title:'最大回転角速度（腰の回転）',place:'腰の後ろ・身体の中心',best:'90°／180°／270°／360°付近を別記録、左右の向きは区別しません。角度分類外は結果だけ保存します。'}
+};
+function newStats(){return {punch:{records:[],best:null},foot:{records:[],best:null},rotation:{records:[],bests:{}}}}
+let data=newStats();
+try{const raw=JSON.parse(localStorage.getItem(STORE)||'null');if(raw&&typeof raw==='object')for(const m of Object.keys(data))if(raw[m]&&typeof raw[m]==='object'){
+ const src=raw[m];data[m].records=Array.isArray(src.records)?src.records.slice(0,40):[];
+ if(m==='rotation')data[m].bests=(src.bests&&typeof src.bests==='object')?src.bests:{};
+ else data[m].best=Number.isFinite(src.best)?src.best:null;
+}}catch(e){console.warn('Cannot load stats',e)}
+function save(){try{localStorage.setItem(STORE,JSON.stringify(data))}catch(e){console.warn('Storage unavailable',e)}}
+let selected='punch',phase='disconnected',device=null,characteristic=null,audio=null;
+let calib=[],baseline=null,gyroBias=[0,0,0],axisUp=[0,0,1],trial=null,startCandidate=null;
+let rxBuffer=[],lastPacketAt=0,lastSampleAt=0,lastNotificationAt=0,notifyTimes=[],sampleTimes=[],maxBatch=0,lastBytes=0,diagnosticFirst=0,diagnosticUpdated=0;
+let latestResult={punch:null,foot:null,rotation:null};
+function txt(id,value){$(id).textContent=String(value)}
+function say(value){txt('message',value)}
+function status(label){txt('status',label)}
+function setPhase(next,label){phase=next;status(label)}
+function unpack16(arr,i){const v=arr[i]|(arr[i+1]<<8);return v>32767?v-65536:v}
+function decode(frame){return {a:[2,4,6].map(i=>unpack16(frame,i)*16/32768),g:[8,10,12].map(i=>unpack16(frame,i)*2000/32768)}}
+function norm(v){return Math.hypot(...v)}
+function dot(a,b){return a.reduce((s,v,i)=>s+v*b[i],0)}
+function mean(values){return values.reduce((a,b)=>a+b,0)/values.length}
+function audioReady(){try{audio=audio||new(window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume().catch(()=>{});}catch(e){console.warn('Audio unavailable',e)}}
+function chime(){try{if(!audio)return;if(audio.state==='suspended')audio.resume().catch(()=>{});const start=audio.currentTime;[784,988,1175].forEach((freq,i)=>{const osc=audio.createOscillator(),gain=audio.createGain(),t=start+i*.13;osc.type='sine';osc.frequency.value=freq;gain.gain.setValueAtTime(.001,t);gain.gain.exponentialRampToValueAtTime(.14,t+.015);gain.gain.exponentialRampToValueAtTime(.001,t+.19);osc.connect(gain).connect(audio.destination);osc.start(t);osc.stop(t+.20)})}catch(e){console.warn('Chime failed',e)}}
+function angleGroup(angle){let result=null,delta=Infinity;for(const a of [90,180,270,360]){const diff=Math.abs(angle-a);if(diff<=Math.max(15,.15*a)&&diff<delta){delta=diff;result=String(a)}}return result}
+function primaryFormat(v){return selected==='rotation'?Number(v).toFixed(0):Number(v).toFixed(2)}
+function cleanMeasureView(){txt('primary','--');txt('metric1','--');txt('metric2','--');txt('result','まだ測定していません');txt('quality','基準取得後に1本測定してください');txt('freeze','次の測定待ち');txt('live','--')}
+function showResult(r){if(!r){cleanMeasureView();return}txt('primary',primaryFormat(r.peak));txt('metric1',selected==='rotation'?r.duration.toFixed(2):r.shortPeak.toFixed(2));txt('metric2',selected==='rotation'?r.angle.toFixed(0):String(r.count));txt('result',r.label||'測定完了');txt('quality',r.quality||'');txt('freeze','🔒 この結果は固定中')}
+function renderBest(){const stats=data[selected];if(selected==='rotation'){let r=latestResult.rotation,group=r?.group;const v=group?stats.bests[group]:null;txt('metric3',Number.isFinite(v)?v.toFixed(0):'--');txt('metric3Unit','°/秒');return}txt('metric3',Number.isFinite(stats.best)?stats.best.toFixed(2):'--');txt('metric3Unit','g')}
+function renderHistory(){const list=$('history');list.replaceChildren();const records=data[selected].records||[];if(!records.length){const li=document.createElement('li');li.textContent='まだこのモードの記録はありません';list.append(li);return}for(const r of records.slice(0,16)){
+ const li=document.createElement('li');if(selected==='rotation')li.textContent=`${r.time}｜最大 ${Number(r.peak).toFixed(0)}°/秒｜${Number(r.duration).toFixed(2)}秒｜約${Number(r.angle).toFixed(0)}°｜最高速度到達 ${Number(r.peakAt).toFixed(2)}秒後｜${r.label||''}`;
+ else li.textContent=`${r.time}｜${Number(r.peak).toFixed(2)}g｜初めの0.2秒 ${Number(r.shortPeak).toFixed(2)}g｜${r.count}点｜${r.label||''}`;
+ list.append(li);
+}}
+function renderMode(){for(const [name,id] of [['punch','tabPunch'],['foot','tabFoot'],['rotation','tabRotation']])$(id).setAttribute('aria-selected',String(name===selected));
+ const rot=selected==='rotation';txt('measureTitle',modeText[selected].title);txt('primaryUnit',rot?' °/秒':' g');txt('metric1Label',rot?'回転時間':'初めの0.2秒（参考）');txt('metric1Unit',rot?'秒':'g');txt('metric2Label',rot?'推定回転角度':'0.4秒の測定点数');txt('metric2Unit',rot?'°':'点');txt('metric3Label',rot?'同角度グループの自己ベスト':'このモードの自己ベスト');txt('placement',modeText[selected].place);txt('bestExplanation',modeText[selected].best);
+ showResult(latestResult[selected]);renderBest();renderHistory();$('arm').disabled=!characteristic;status(phase==='disconnected'?'未接続': '接続済み・基準取得待ち');
+}
+function chooseMode(name){if(!modeText[name]||selected===name)return;selected=name;calib=[];baseline=null;trial=null;startCandidate=null;if(characteristic)setPhase('connected','再基準取得');else setPhase('disconnected','未接続');renderMode();say('モードを切り替えました。センサーを装着し直したら、静止して基準取得を行ってください。');}
+for(const b of document.querySelectorAll('button[data-mode]'))b.addEventListener('click',()=>chooseMode(b.dataset.mode));
+function disconnected(){device=null;characteristic=null;calib=[];baseline=null;trial=null;startCandidate=null;setPhase('disconnected','未接続');$('connect').disabled=false;$('disconnect').disabled=true;$('arm').disabled=true;txt('received','切断');say('Bluetoothが切れました。再接続してください。')}
+function refreshStats(){const now=performance.now();const from=now-5000;notifyTimes=notifyTimes.filter(t=>t>=from);sampleTimes=sampleTimes.filter(t=>t>=from);const span=Math.max(1,Math.min(5,(now-diagnosticFirst)/1000));txt('notifyHz',(notifyTimes.length/span).toFixed(1)+' Hz');txt('dataHz',(sampleTimes.length/span).toFixed(1)+' Hz');txt('hz',(sampleTimes.length/span).toFixed(0));txt('bytes',lastBytes+' B');txt('batch',maxBatch)}
+function finishLinear(now){if(!trial)return;const c=trial;trial=null;const r={time:new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}),peak:c.peak,peakAt:Math.max(0,(c.peakT-c.start)/1000),shortPeak:c.shortPeak,count:c.count,shortCount:c.shortCount,maxGapMs:Math.round(c.maxGap),batched:!!c.batched,quality:'',label:''};
+ // Ver.1.1: receiving several frames in one BLE notification alone does not invalidate peak acceleration.
+ // Peak is provisional; estimated sampling timestamps are NOT suitable for precise onset timing.
+ const enough=c.count>=3&&c.peak>=(selected==='punch'?.45:.50)&&Number.isFinite(c.peak);
+ const comparable=enough&&c.count>=8&&c.maxGap<=200;
+ if(!enough){r.label='データ不足・判定不可';r.quality=`点数${c.count}点・最大受信間隔${r.maxGapMs}ms。開始条件または最低3点が不足`;}
+ else if(!comparable){r.label='参考記録（無音）';r.quality=`点数${c.count}点（目安8点以上）・最大受信間隔${r.maxGapMs}ms（目安200ms以下）。自己ベスト対象外`;}
+ else{const s=data[selected],old=s.best;if(old===null){s.best=r.peak;r.label='初回の基準を登録（無音）';}else if(r.peak>old){s.best=r.peak;const notify=r.peak-old>=Math.max(.15,old*.05);r.label=notify?'🏆 自己ベスト更新！ ピロロン♪':'小幅更新（無音）';if(notify)chime();}else r.label='測定完了（無音）';r.quality=`${c.count}点・最大受信間隔${r.maxGapMs}ms。${c.batched?'まとめ受信あり：ピーク値は暫定比較、0.2秒の時刻精度は未検証。':'センサー位置・姿勢をそろえて比較。'}加速度は拳・足先の実速度や離地時間ではありません。`;}
+ latestResult[selected]=r;data[selected].records.unshift(r);data[selected].records=data[selected].records.slice(0,40);save();showResult(r);renderBest();renderHistory();setPhase('review','結果固定中');say('結果を固定しました。次は構え直して「基準取得・次の1本」を押してください。');}
+function finishRotation(t,forced=false){if(!trial)return;const c=trial;trial=null;startCandidate=null;const end=c.stopStart==null?t:c.stopStart,duration=Math.max(0,(end-c.start)/1000),angle=Math.abs(c.stopAngle==null?c.angle:c.stopAngle),peakAt=Math.max(0,(c.peakT-c.start)/1000),group=angleGroup(angle);
+ const valid=!forced&&c.count>=8&&c.peak>=100&&angle>=35&&duration>=.10&&duration<2.8&&!c.saturated&&c.maxGap<=120&&Number.isFinite(angle);
+ const r={time:new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}),peak:c.peak,peakAt,duration,angle,group,count:c.count,label:'',quality:''};
+ if(!valid){r.label='参考記録・比較対象外';r.quality='停止・点数・受信間隔・回転角度などの条件が未達';}
+ else if(c.batched){r.label='まとめ受信・参考記録';r.quality='受信時刻が不確実なためベスト判定なし';}
+ else if(!group){r.label='角度分類外（無音）';r.quality='自由回転として保存。ベスト判定なし';}
+ else{const prev=data.rotation.bests[group];if(!Number.isFinite(prev)){data.rotation.bests[group]=c.peak;r.label=group+'°の初回記録（無音）';}else if(c.peak>prev){data.rotation.bests[group]=c.peak;const notify=c.peak-prev>=Math.max(20,prev*.05);r.label=notify?'🏆 '+group+'°のベスト更新！ ピロロン♪':'小幅更新（無音）';if(notify)chime();}else r.label='測定完了（無音）';r.quality=`推定${angle.toFixed(0)}°・${c.count}点（最大角速度）`}
+ latestResult.rotation=r;data.rotation.records.unshift(r);data.rotation.records=data.rotation.records.slice(0,40);save();showResult(r);renderBest();renderHistory();setPhase('review','結果固定中');say('回転結果を固定しました。回転時間と最大角速度を確認できます。次の1本はボタンを押してから。')}
+function frameReceived(frame,t,batched){lastSampleAt=performance.now();if(phase==='stalled'){setPhase('connected','受信再開');say('受信が戻りました。再度基準を取得してください。')}
+ if(performance.now()-diagnosticUpdated>100){diagnosticUpdated=performance.now();txt('received','受信中');if(selected==='rotation')txt('live',frame.g.map(v=>v.toFixed(0)).join(' / ')+' °/秒');else txt('live',frame.a.map(v=>v.toFixed(2)).join(' / ')+' g')}
+ if(phase==='calibration'){
+  calib.push({t,frame});if(calib.length>160)calib.shift();if(calib.length<12||t-calib[0].t<1000)return;
+  const recent=calib.slice(-Math.min(55,calib.length));const avgA=[0,1,2].map(i=>mean(recent.map(x=>x.frame.a[i]))),avgG=[0,1,2].map(i=>mean(recent.map(x=>x.frame.g[i])));
+  const accelSd=Math.sqrt(mean(recent.map(x=>Math.pow(norm(x.frame.a.map((a,i)=>a-avgA[i])),2))));
+  const gyroSd=Math.sqrt(mean(recent.map(x=>Math.pow(norm(x.frame.g.map((g,i)=>g-avgG[i])),2))));
+  if(accelSd>.16||gyroSd>15){calib=calib.slice(-10);say('基準取得中です。動かずに約1秒静止してください。');return}
+  baseline=avgA;gyroBias=avgG;const n=norm(avgA);if(n<.6||n>1.5){calib=[];say('静止基準を取得できません。センサーの固定を確認してください。');return}axisUp=avgA.map(x=>x/n);
+  calib=[];trial=null;startCandidate=null;setPhase('ready','次の1本を待機');say(selected==='rotation'?'準備OK。左右どちらでも1回転して、しっかり停止してください。':'準備OK。構えた姿勢から1本だけ動かしてください。');return;
+ }
+ if(!baseline||!['ready','linear','spinning'].includes(phase))return;
+ if(selected!=='rotation'){
+  const diff=frame.a.map((a,i)=>a-baseline[i]);const value=selected==='punch'?Math.max(0,diff[1]):norm(diff);const threshold=selected==='punch'?.45:.50;
+  if(phase==='ready'){if(value>=threshold){trial={start:t,peak:value,peakT:t,shortPeak:value,count:1,shortCount:1,maxGap:0,lastT:t,batched};setPhase('linear','計測中')}return}
+  if(phase==='linear'){
+   const c=trial;if(!c)return;const dt=t-c.lastT;if(dt<0)return;c.maxGap=Math.max(dt,c.maxGap);c.lastT=t;c.count++;c.batched||=batched;if(value>c.peak){c.peak=value;c.peakT=t}if(t-c.start<=200){c.shortPeak=Math.max(c.shortPeak,value);c.shortCount++}
+   if(dt>300){trial=null;setPhase('connected','通信切れ・再基準取得');say('データが途切れました。基準を取り直してください。');return}
+   if(t-c.start>=400){finishLinear(t)}
+  }return;
+ }
+ const gyro=frame.g.map((v,i)=>v-gyroBias[i]);const w=dot(gyro,axisUp),wAbs=Math.abs(w),gMag=norm(gyro);
+ if(phase==='ready'){
+  if(wAbs>70){if(startCandidate&&Math.sign(startCandidate.w)===Math.sign(w)&&t-startCandidate.t<180){trial={start:startCandidate.t,lastT:startCandidate.t,lastW:startCandidate.w,dir:Math.sign(w),peak:wAbs,peakT:t,angle:0,count:1,stopStart:null,stopAngle:null,maxGap:0,batched:batched||startCandidate.batched,saturated:wAbs>1950};setPhase('spinning','回転計測中');startCandidate=null;}
+   else startCandidate={t,w,batched};}else startCandidate=null;
+  if(phase!=='spinning')return;
+ }
+ if(phase==='spinning'){
+  const c=trial;if(!c)return;const dt=t-c.lastT;if(dt<0)return;
+  c.maxGap=Math.max(c.maxGap,dt);if(dt>300){trial=null;setPhase('connected','通信停止・再基準取得');say('測定中にデータが途切れました。基準を取り直してください。');return}
+  c.angle+=(c.lastW*c.dir+w*c.dir)*.5*dt/1000;c.lastW=w;c.lastT=t;c.count++;c.batched||=batched;c.saturated||=wAbs>1950;
+  if(wAbs>c.peak){c.peak=wAbs;c.peakT=t}
+  if(wAbs<25&&gMag<55){if(c.stopStart===null){c.stopStart=t;c.stopAngle=c.angle}else if(t-c.stopStart>=230){finishRotation(t);return}}
+  else {c.stopStart=null;c.stopAngle=null}
+  if(t-c.start>3000)finishRotation(t,true);
+ }
+}
+function onNotify(event){const dv=event.target.value;if(!dv)return;const now=performance.now();if(!diagnosticFirst)diagnosticFirst=now;notifyTimes.push(now);lastBytes=dv.byteLength;const bytes=new Uint8Array(dv.buffer,dv.byteOffset,dv.byteLength);for(const b of bytes)rxBuffer.push(b);if(rxBuffer.length>8192)rxBuffer=rxBuffer.slice(-120);
+ const frames=[];while(rxBuffer.length>=20){const index=rxBuffer.indexOf(0x55);if(index<0){rxBuffer=[];break}if(index>0)rxBuffer.splice(0,index);if(rxBuffer.length<20)break;
+  if(rxBuffer[1]===0x61){frames.push(decode(rxBuffer.slice(0,20)));rxBuffer.splice(0,20)}else if(rxBuffer[1]===0x71){rxBuffer.splice(0,20)}else rxBuffer.shift();}
+ maxBatch=Math.max(maxBatch,frames.length);const gap=lastNotificationAt?now-lastNotificationAt:Math.max(35,frames.length*40);const batched=frames.length>1||gap>150;
+ for(let i=0;i<frames.length;i++){const t=now-(frames.length-1-i)*Math.max(1,gap/Math.max(1,frames.length));sampleTimes.push(now);frameReceived(frames[i],t,batched)}
+ lastNotificationAt=now;if(now-(window._lastDiag||0)>400){window._lastDiag=now;refreshStats()}
+}
+$('connect').onclick=async()=>{audioReady();if(!navigator.bluetooth){say('Web Bluetoothが利用できません。BluefyでHTTPSから開いてください。');return} $('connect').disabled=true;setPhase('connecting','接続中');
+ try{const d=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'WT901'}],optionalServices:[SERVICE]});device=d;d.addEventListener('gattserverdisconnected',disconnected);const server=await d.gatt.connect(),svc=await server.getPrimaryService(SERVICE),c=await svc.getCharacteristic(NOTIFY);await c.startNotifications();characteristic=c;c.addEventListener('characteristicvaluechanged',onNotify);setPhase('connected','接続済み');$('disconnect').disabled=false;$('arm').disabled=false;diagnosticFirst=0;lastNotificationAt=0;lastSampleAt=0;notifyTimes=[];sampleTimes=[];rxBuffer=[];say('接続できました。装着位置を確かめて、静止して基準取得してください。')}
+ catch(e){setPhase('disconnected','接続失敗');$('connect').disabled=false;say('接続エラー：'+(e?.message||e)+'。WITMOTION公式アプリ側の接続を切って再試行してください。')}
+};
+$('disconnect').onclick=()=>{try{characteristic?.removeEventListener('characteristicvaluechanged',onNotify);device?.removeEventListener('gattserverdisconnected',disconnected);device?.gatt?.disconnect()}catch(e){console.warn(e)}disconnected()};
+$('arm').onclick=()=>{if(!characteristic)return;audioReady();calib=[];baseline=null;trial=null;startCandidate=null;setPhase('calibration','静止基準取得中');txt('freeze','1本の測定準備中');say('今の装着位置・向きで、1〜2秒静止してください。基準を取ってから動き始めます。')};
+$('sound').onclick=()=>{audioReady();chime()};
+setInterval(()=>{if(!device?.gatt?.connected)return;if(!lastSampleAt){txt('received','有効データ待ち');return}const since=performance.now()-lastSampleAt;if(since>1900){txt('received','データ停止');if(!['connected','review','stalled','disconnected'].includes(phase)){trial=null;baseline=null;setPhase('stalled','受信停止');say('有効データが約2秒届いていません。通信を確認して再度基準取得してください。')}}else txt('received',`${(since/1000).toFixed(1)}秒前`)},650);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&device?.gatt?.connected&&!['connected','review'].includes(phase)){trial=null;baseline=null;setPhase('connected','再基準取得');say('画面に戻りました。センサーの基準を取り直してください。')}});
+renderMode();
+</script></body></html>
